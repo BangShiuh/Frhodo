@@ -1,0 +1,7 @@
+top level:
+  Path: muckity fuckity
+  optimization:
+    min:
+      - hi: nice
+      - 1
+    max: 1
