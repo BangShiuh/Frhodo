@@ -2,7 +2,7 @@
 # and licensed under BSD-3-Clause. See License.txt in the top-level 
 # directory for license and copyright information.
 
-import os, io, contextlib
+import os, io, stat, contextlib
 import cantera as ct
 from cantera import interrupts, ck2yaml, cti2yaml#, ctml2yaml
 import numpy as np
@@ -195,13 +195,17 @@ class Chemical_Mechanism:
         return output
     
     def chemkin2cantera(self, path):
+        # Check generated_mech.yaml is readable and writable, if not change so it is
+        if not os.access(path['Cantera_Mech'], os.R_OK) or not os.access(path['Cantera_Mech'], os.W_OK):
+            os.chmod(path['Cantera_Mech'], stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
+        
         if path['thermo'] is not None:
             surfaces = ck2yaml.convert_mech(path['mech'], thermo_file=path['thermo'], transport_file=None, surface_file=None,
                 phase_name='gas', out_name=path['Cantera_Mech'], quiet=False, permissive=True)
         else:
             surfaces = ck2yaml.convert_mech(path['mech'], thermo_file=None, transport_file=None, surface_file=None,
                 phase_name='gas', out_name=path['Cantera_Mech'], quiet=False, permissive=True)
-            
+           
         return surfaces
       
     def gas(self): return self.gas       

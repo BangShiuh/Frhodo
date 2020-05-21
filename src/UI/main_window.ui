@@ -62,7 +62,7 @@
         <enum>QTabWidget::Triangular</enum>
        </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="directory_tab">
         <attribute name="title">
@@ -1985,7 +1985,7 @@ p, li { white-space: pre-wrap; }
                <double>0.010000000000000</double>
               </property>
               <property name="value">
-               <double>0.200000000000000</double>
+               <double>0.000000000000000</double>
               </property>
              </widget>
             </item>
@@ -2270,8 +2270,8 @@ p, li { white-space: pre-wrap; }
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>223</width>
-                 <height>104</height>
+                 <width>283</width>
+                 <height>118</height>
                 </rect>
                </property>
                <attribute name="label">

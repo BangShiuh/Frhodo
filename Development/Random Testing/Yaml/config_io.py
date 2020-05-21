@@ -10,8 +10,6 @@ import numpy as np
 
 import pathlib, sys
 
-BlockMap = yaml.comments.CommentedMap
-
 def FlowMap(*args, **kwargs):
     m = yaml.comments.CommentedMap(*args, **kwargs)
     m.fa.set_flow_style()
@@ -58,59 +56,100 @@ class GUI_Config(yaml.YAML):
         # self.indent = 4
         self.allow_unicode = True
         self.encoding = 'utf-8'
+        self.width = 80
         
-        self.data = self.load('')
-      
-    def to_yaml(self, data, dest):
-        out = BlockMap([('model', 'NASA7')])
-        out['temperature-ranges'] = FlowList([node.Tmin, node.Tmid, node.Tmax])
-        out['data'] = [FlowList(node.low_coeffs), FlowList(node.high_coeffs)]
-        if node.note:
-            note = textwrap.dedent(node.note.rstrip())
-            if '\n' in note:
-                note = yaml.scalarstring.PreservedScalarString(note)
-            out['note'] = note
+        self.setDefault()
+        
+    def setDefault(self):
+        self.settings = {'Directory Settings': {
+                            'directory file': '',
+                            'load full series': False,
+                            },
+                         'Experiment Settings': {
+                            'temperature units': {'zone 1': 'K',    'zone 2': 'K',    'zone 5': 'K'},
+                            'pressure units':    {'zone 1': 'Torr', 'zone 2': 'Torr', 'zone 5': 'atm'},
+                            'velocity units': 'm/s',
+                            },
+                         'Reactor Settings': {
+                            'reactor': 'Incident Shock Reactor',
+                            'solve energy': True,
+                            'frozen composition': False,
+                            'simulation end time': {'value': 12.0, 'units': 'us'},
+                            'ODE solver': 'BDF',
+                            'simulation interpolation factor': 1,
+                            'ODE tolerance': {'relative': 1E-6, 'absolute': 1E-8},
+                            },
+                         'Optimization Settings': {
+                            'time uncertainty': 0.0,
+                            'loss function alpha': -2.00,
+                            'loss function c': 1.00,
+                            'multiprocessing': True,
+                            'enabled':                  {'Global': True,     'Local': True},
+                            'algorithm':                {'Global': 'DIRECT', 'Local': 'Subplex'},
+                            'initial step':             {'Global': 1.0E-2,   'Local': 1.0E-2},
+                            'relative tolerance x':     {'Global': 1.0E-4,   'Local': 1.0E-4},
+                            'relative tolerance fcn':   {'Global': 5.0E-4,   'Local': 1.0E-3},
+                            'Weight Function': {
+                                'max': 100,
+                                'min': [0, 0],
+                                'time location': [0.5, 3.7],
+                                'inverse growth rate': [0, 0.3],
+                                },
+                            },
+                         'Plot Settings': {
+                            'x-scale': 'linear',
+                            'y-scale': 'abslog',
+                            },
+                        }
+                         
+    def to_yaml(self, dest=None):
+        settings = self.settings
+        # out = settings.copy()
+        out = yaml.comments.CommentedMap(settings)
+        
+        # add spacing between main sections
+        for key in list(self.settings.keys())[1:]:
+            out.yaml_set_comment_before_after_key(key, before='\n')
+        
+        # reformat certain sections 
+        toFlowMap = [['Experiment Settings', 'temperature units'],
+                     ['Experiment Settings', 'pressure units'],
+                    ]
+        toFlowList = [['Optimization Settings', 'Weight Function', 'min'],
+                      ['Optimization Settings', 'Weight Function', 'time location'],
+                      ['Optimization Settings', 'Weight Function', 'inverse growth rate'],
+                     ]
+        for FlowType, toFlow in {'Map': toFlowMap, 'List': toFlowList}.items():
+            for keys in toFlow:
+                out_element = out
+                settings_element = settings
+                for key in keys[:-1]:
+                    out_element = out_element[key]
+                    settings_element = settings_element[key]
+                
+                if FlowType == 'Map':
+                    out_element[keys[-1]] = FlowMap(settings_element[keys[-1]])
+                elif FlowType == 'List':
+                    out_element[keys[-1]] = FlowList(settings_element[keys[-1]])
+        
+        # if node.note:
+            # note = textwrap.dedent(node.note.rstrip())
+            # if '\n' in note:
+                # note = yaml.scalarstring.PreservedScalarString(note)
+            # out['note'] = note
 
-        self.dump(representer.represent_dict(out), dest)
-        
-    def prepare(self, input):
-        def is_container(obj):
-            if isinstance(obj, str):
-                return False
-            else:
-                return hasattr(type(obj), '__iter__')
-            
-        if isinstance(input, dict):
-            for k, v in input.items():
-                if is_container(v):
-                    print("{0} : ".format(k))
-                    self.prepare(v)
-                else:
-                    print("{0} : {1}".format(k, v))
-                    
-        elif is_container(input) and not isinstance(input, dict):
-            has_any_subcontainers = any(is_container(obj) for obj in input)
-            if not has_any_subcontainers:
-                print("{0}".format(input))
-            else:
-                for v in input:
-                    if is_container(v):
-                        self.prepare(v)
-                    else:
-                        print("{0}".format(v))
-            
+        # self.dump(representer.represent_dict(out), dest)
+        if dest is None: 
+            self.dump(out, sys.stdout)
+        else:
+            with open(dest, 'w') as configFile:
+                self.dump(out, configFile)                   
 
 gui_cfg = GUI_Config()
 
 path = {}
 path['default_config'] = 'default_config.yaml'
 
-settings = {'top level': {'Path': 'muckity', 'opt': {'min': [{'hi': 'nice'}, 1], 'max': [1, [11,13]]}}}
-
-gui_cfg.prepare(settings)
-
-# gui_cfg.dump(settings, sys.stdout)
-
-# with open(path['default_config'], 'w') as configFile:
-    # data = gui_cfg.dump(settings, configFile)
-    
+# gui_cfg.dump(gui_cfg.settings, sys.stdout)
+gui_cfg.to_yaml(path['default_config'])
+# gui_cfg.to_yaml()
