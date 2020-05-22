@@ -123,6 +123,8 @@ venv.bak/
 # Development Folders
 Development/Franklin
 Development/Old Versions
+Development/Documentation
+Development/Extras
 Paths/
 #*.7z
 #*.ini

@@ -95,9 +95,7 @@ Loading:
 ****  abstract file loading system
 ***   remove requirement for Sample Rate in exp file
 ***   remove requirements for raw signal files
-***   enable yaml input files
 ***   set widgets to save their state to default_settings
-**    make initial loading work without default_settings
 **    load previous shock settings/plot
 
 Rate of Production Analysis Plot:

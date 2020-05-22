@@ -78,7 +78,6 @@ class GUI_Config(yaml.YAML):
     def setDefault(self):
         self.settings = {'Directory Settings': {
                             'directory file': '',
-                            'load full series': False,
                             },
                          'Experiment Settings': {
                             'temperature units': {'zone 1': 'K',    'zone 2': 'K',    'zone 5': 'K'},
