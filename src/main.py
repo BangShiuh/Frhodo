@@ -16,7 +16,7 @@ import numpy as np
 # from timeit import default_timer as timer
 
 import plot, misc_widget, options_panel_widgets, convert_units, sim_explorer_widget
-import mech_fcns, settings, save_widget
+import mech_fcns, settings, config_io, save_widget
     
 if os.environ['QT_API'] == 'pyside2': # Silence warning: "Qt WebEngine seems to be initialized from a plugin."
     QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
@@ -27,10 +27,27 @@ if hasattr(QtCore.Qt, 'AA_EnableHighDpiScaling'):
 if hasattr(QtCore.Qt, 'AA_UseHighDpiPixmaps'):
     QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
 
+# set main folder
+path = {'main': pathlib.Path(sys.argv[0]).parents[0].resolve()}
+
+# set appdata folder
+if platform.system() == 'Windows': # running on Windows OS
+    path['appdata'] = pathlib.Path(os.getenv('LOCALAPPDATA')).resolve()/'Frhodo'
+elif platform.system() == 'Darwin': # running on Mac OS
+    path['appdata'] = pathlib.Path('~/Library/Application Support/Frhodo')
+elif platform.system() == 'Linux': # running on Linux OS
+    path['appdata'] = pathlib.Path('~/.config/Frhodo')
+else:
+    raise OSError('Unknown Operating System')
+
+# Make path if it doesn't exist
+path['appdata'].mkdir(parents=True, exist_ok=True)
+
+
 class Main(QMainWindow):
-    def __init__(self):
+    def __init__(self, path):
         super().__init__()
-        self.path_set = settings.path(self)
+        self.path_set = settings.path(self, path)
         uic.loadUi(str(self.path['main']/'UI'/'main_window.ui'), self)
         self.splitter.moveSplitter(0, 1)    # moves splitter 0 as close to 1 as possible
         self.setWindowIcon(QtGui.QIcon(str(self.path['main']/'UI'/'graphics'/'main_icon.png')))
@@ -70,9 +87,8 @@ class Main(QMainWindow):
     def initialize_settings(self):
         self.var['old_shock_choice'] = self.var['shock_choice'] = 1
                 
-        self.user_settings = settings.user_settings(self)
-        if self.path['default_settings.ini'].exists():
-            self.user_settings.load(self.path['default_settings.ini'])
+        self.user_settings = config_io.GUI_settings(self)
+        self.user_settings.load()
         
         self.load_full_series = self.load_full_series_box.isChecked()   # TODO: Move to somewhere else?
         
@@ -256,9 +272,8 @@ class Main(QMainWindow):
 class Error_Window(QDialog):
     def __init__(self, path):
         super().__init__()
-        self.path = path
-        uic.loadUi(str(self.path['main']/'UI'/'error_window.ui'), self)
-        self.setWindowIcon(QtGui.QIcon(str(self.path['main']/'UI'/'graphics'/'main_icon.png')))
+        uic.loadUi(str(path['main']/'UI'/'error_window.ui'), self)
+        self.setWindowIcon(QtGui.QIcon(str(path['main']/'UI'/'graphics'/'main_icon.png')))
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.CustomizeWindowHint | QtCore.Qt.WindowTitleHint |
                             QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.WindowStaysOnTopHint)
 
@@ -281,12 +296,11 @@ class Error_Window(QDialog):
 
 def excepthook(type, value, tback):
     # log the exception
-    path = {'main': pathlib.Path(sys.argv[0]).parents[0].resolve()}
-    path['log'] = path['main']/'error.log'
+    path['log'] = path['appdata']/'error.log'
     
     log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     
-    log_handler = RotatingFileHandler(path['log'], mode='a', maxBytes=1*1024*1024, # maximum of 1 MB
+    log_handler = RotatingFileHandler(path['log'], mode='a', maxBytes=1/2*1024*1024, # maximum of 512 kB
                                      backupCount=1, encoding=None, delay=0)        # maximum of 2 error files
     log_handler.setFormatter(log_formatter)
     log_handler.setLevel(logging.DEBUG)
@@ -310,6 +324,6 @@ if __name__ == '__main__':
         multiprocessing.freeze_support()
 
     app = QApplication(sys.argv)
-    main = Main()
+    main = Main(path)
     sys.exit(app.exec_())
    

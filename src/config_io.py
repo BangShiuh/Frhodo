@@ -8,7 +8,7 @@ except ImportError:
 
 import numpy as np
 
-import pathlib, sys
+import pathlib, sys, collections
 
 def FlowMap(*args, **kwargs):
     m = yaml.comments.CommentedMap(*args, **kwargs)
@@ -47,6 +47,19 @@ def represent_float(self, data):
     return self.represent_scalar(u'tag:yaml.org,2002:float', value)
 
 yaml.RoundTripRepresenter.add_representer(float, represent_float)
+
+def deep_convert_dict(layer):   # convert all OrderedDict into dict to remove comments
+    to_ret = layer              # they add a space each time prrogram is opened
+    if isinstance(layer, collections.OrderedDict):
+        to_ret = dict(layer)
+
+    try:
+        for key, value in to_ret.items():
+            to_ret[key] = deep_convert_dict(value)
+    except AttributeError:
+        pass
+
+    return to_ret
 
 class GUI_Config(yaml.YAML):
     def __init__(self):
@@ -106,12 +119,7 @@ class GUI_Config(yaml.YAML):
                          
     def to_yaml(self, dest=None):
         settings = self.settings
-        # out = settings.copy()
         out = yaml.comments.CommentedMap(settings)
-        
-        # add spacing between main sections
-        for key in list(self.settings.keys())[1:]:
-            out.yaml_set_comment_before_after_key(key, before='\n')
         
         # reformat certain sections 
         toFlowMap = [['Experiment Settings', 'temperature units'],
@@ -134,6 +142,10 @@ class GUI_Config(yaml.YAML):
                 elif FlowType == 'List':
                     out_element[keys[-1]] = FlowList(settings_element[keys[-1]])
         
+        # add spacing between main sections
+        for key in list(self.settings.keys())[1:]:
+            out.yaml_set_comment_before_after_key(key, before='\n')
+        
         # if node.note:
             # note = textwrap.dedent(node.note.rstrip())
             # if '\n' in note:
@@ -152,7 +164,55 @@ class GUI_Config(yaml.YAML):
         if not src.exists(): return
         
         with open(src, 'r') as configFile:
-            self.settings.update(self.load(configFile))
+            data = deep_convert_dict(self.load(configFile))
+
+        self.settings.update(data)
+
+
+class GUI_settings:
+    def __init__(self, parent):
+        self.parent = parent    # Need to find a better solution than passing parent
+        self.cfg_io = GUI_Config()
+        self.cfg = self.cfg_io.settings
+    
+    def load(self):
+        parent = self.parent
+        
+        self.cfg_io.from_yaml(parent.path['default_config'])
+        
+        parent.shock_choice_box.setValue(1)
+        # parent.time_offset_box.setValue(float(self.config['Experiment Settings']['time_offset']))
+        # parent.time_unc_box.setValue(float(self.config['Experiment Settings']['time_unc']))
+        # parent.start_ind_box.setValue(float(self.config['Experiment Settings']['start_ind']))
+        # parent.weight_k_box.setValue(float(self.config['Experiment Settings']['weight_k']))
+        # parent.weight_shift_box.setValue(float(self.config['Experiment Settings']['weight_shift']))
+        # parent.weight_min_box.setValue(float(self.config['Experiment Settings']['weight_min'])*100)
+        
+        # parent.path['path_file'] = pathlib.Path(cfg['Directory Settings']['directory file'])
+        parent.path_file_box.setPlainText(str(self.cfg['Directory Settings']['directory file']))
+    
+    def save(self, save_all=False):
+        parent = self.parent
+        
+        self.cfg['Directory Settings']['directory file'] = str(parent.path['path_file'])
+        
+        '''
+        if save_all:
+            self.config['Directory File'] = {'file': str(parent.path['path_file'])}
+            
+            # self.config['Experiment Settings'] = {'start_ind':       parent.var['start ind'],
+                                                  # 'time_offset':     parent.var['time_offset'],
+                                                  # 'time_unc':        parent.var['time_unc'],
+                                                  # 'weight_k':        parent.var['weight_k'],
+                                                  # 'weight_shift':    parent.var['weight_shift'],
+                                                  # 'weight_min':      parent.var['weight_min']}
+                    
+        else:
+            self.config.set('Directory File', 'file', str(parent.path['path_file']))
+        '''
+        
+        self.cfg_io.to_yaml(parent.path['default_config'])
+        
 
 if __name__ == '__main__':
     gui_cfg = GUI_Config()

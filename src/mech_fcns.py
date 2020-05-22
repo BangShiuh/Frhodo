@@ -195,10 +195,6 @@ class Chemical_Mechanism:
         return output
     
     def chemkin2cantera(self, path):
-        # Check generated_mech.yaml is readable and writable, if not change so it is
-        if not os.access(path['Cantera_Mech'], os.R_OK) or not os.access(path['Cantera_Mech'], os.W_OK):
-            os.chmod(path['Cantera_Mech'], stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
-        
         if path['thermo'] is not None:
             surfaces = ck2yaml.convert_mech(path['mech'], thermo_file=path['thermo'], transport_file=None, surface_file=None,
                 phase_name='gas', out_name=path['Cantera_Mech'], quiet=False, permissive=True)

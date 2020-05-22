@@ -3,59 +3,28 @@
 # directory for license and copyright information.
 
 import numpy as np
-import sys, pathlib, shutil, configparser, re, csv
+import os, sys, platform, pathlib, shutil, configparser, re, csv
 from copy import deepcopy
 from dateutil.parser import parse
 from scipy import integrate      # used to integrate weights numerically
 
-class user_settings:
-    def __init__(self, parent):
-        self.parent = parent    # Need to find a better solution than passing parent
-        self.config = configparser.RawConfigParser()
-    
-    def load(self, file_path):
-        parent = self.parent
-        self.config.read(file_path)
-        
-        parent.path['path_file'] = pathlib.Path(self.config['Directory File']['file'])
-        parent.path_file_box.setPlainText(str(parent.path['path_file']))
-        
-        parent.shock_choice_box.setValue(1)
-        # parent.time_offset_box.setValue(float(self.config['Experiment Settings']['time_offset']))
-        # parent.time_unc_box.setValue(float(self.config['Experiment Settings']['time_unc']))
-        # parent.start_ind_box.setValue(float(self.config['Experiment Settings']['start_ind']))
-        # parent.weight_k_box.setValue(float(self.config['Experiment Settings']['weight_k']))
-        # parent.weight_shift_box.setValue(float(self.config['Experiment Settings']['weight_shift']))
-        # parent.weight_min_box.setValue(float(self.config['Experiment Settings']['weight_min'])*100)
-    
-    def save(self, file_path, save_all):
-        parent = self.parent
-        if save_all:
-            self.config['Directory File'] = {'file': str(parent.path['path_file'])}
-            
-            # self.config['Experiment Settings'] = {'start_ind':       parent.var['start ind'],
-                                                  # 'time_offset':     parent.var['time_offset'],
-                                                  # 'time_unc':        parent.var['time_unc'],
-                                                  # 'weight_k':        parent.var['weight_k'],
-                                                  # 'weight_shift':    parent.var['weight_shift'],
-                                                  # 'weight_min':      parent.var['weight_min']}
-                    
-        else:
-            self.config.set('Directory File', 'file', str(parent.path['path_file']))
-                                                    
-        with open(file_path, 'w') as configfile:
-            self.config.write(configfile)
-
             
 class path:
-    def __init__(self, parent):
+    def __init__(self, parent, path):
         self.parent = parent
         self.loading_dir_file = False
         
-        parent.path = {'main': pathlib.Path(sys.argv[0]).parents[0].resolve()}
-        parent.path['default_settings.ini'] = parent.path['main']/'default_settings.ini'
+        parent.path = path
         parent.path['graphics'] = parent.path['main']/'UI'/'graphics'
         self.config = configparser.RawConfigParser()
+        
+        # Specify yaml files
+        parent.path['default_config'] = parent.path['appdata']/'default_config.yaml'
+        parent.path['Cantera_Mech'] = parent.path['appdata']/'generated_mech.yaml'
+        for key in ['default_config', 'Cantera_Mech']:
+            if parent.path[key].exists(): # Check that file is readable and writable
+                if not os.access(parent.path[key], os.R_OK) or not os.access(parent.path[key], os.W_OK):
+                    os.chmod(parent.path[key], stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP) # try to change if not
     
     def mech(self):
         parent = self.parent
@@ -127,9 +96,6 @@ class path:
             obj.blockSignals(False)
             if idx >= 0:
                 obj.setCurrentIndex(idx)
-                
-        # Specify cantera files
-        parent.path['Cantera_Mech'] = parent.path['mech_main'] / 'generated_mech.yaml'
      
     def shock_paths(self, prefix, ext, max_depth=2):
         parent = self.parent
@@ -866,7 +832,7 @@ class series:
 
     def change_shock(self):
         parent = self.parent
-        parent.user_settings.save(parent.path['default_settings.ini'], save_all = False)
+        # parent.user_settings.save(save_all = False)
         
         self.update_idx()
         # if current exp path doesn't match the current loaded path

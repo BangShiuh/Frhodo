@@ -156,7 +156,7 @@ class Directories(QtCore.QObject):
                     
                 eval('parent.' + key + '_box.setPlainText(str(path))')
                 parent.path[key] = path
-                parent.user_settings.save(parent.path['default_settings.ini'], save_all = False)
+                parent.user_settings.save(save_all = False)
 
         elif 'box' in type:
             text = self.sender().toPlainText()
@@ -215,7 +215,7 @@ class Directories(QtCore.QObject):
         if path[0] and 'exp_main' not in self.invalid:
             parent.path_set.save_dir_file(path[0])
             parent.path_file_box.setPlainText(path[0])
-            parent.user_settings.save(parent.path['default_settings.ini'], save_all = False)
+            parent.user_settings.save(save_all = False)
         elif self.invalid:
             parent.log.append('Could not save directory settings:\nInvalid directory found')
             

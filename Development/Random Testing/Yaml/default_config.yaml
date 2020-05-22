@@ -26,21 +26,21 @@ Optimization Settings:
   loss function c: 1.0
   multiprocessing: true
   enabled:
-    Global: true
-    Local: true
+    global: true
+    local: true
   algorithm:
-    Global: DIRECT
-    Local: Subplex
+    global: DIRECT
+    local: Subplex
   initial step:
-    Global: 0.01
-    Local: 0.01
+    global: 0.01
+    local: 0.01
   relative tolerance x:
-    Global: 1.0e-04
-    Local: 1.0e-04
+    global: 1.0e-04
+    local: 1.0e-04
   relative tolerance fcn:
-    Global: 5.0e-04
-    Local: 1.0e-03
-  Weight Function:
+    global: 5.0e-04
+    local: 1.0e-03
+  weight function:
     max: 100
     min: [0, 0]
     time location: [0.5, 3.7]
