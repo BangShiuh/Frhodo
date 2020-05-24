@@ -887,7 +887,7 @@ class series:
         
         # Update signal and raw_signal plots
         if parent.display_shock['exp_data'].size > 0:
-            parent.plot.signal.update(update_lim=True)     
+            parent.plot.signal.update(update_lim=True)
             parent.plot.signal.set_background()           # Reset background
         else:
             parent.plot.signal.clear_plot() 

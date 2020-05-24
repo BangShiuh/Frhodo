@@ -8,7 +8,7 @@ except ImportError:
 
 import numpy as np
 
-import pathlib, sys, collections
+import sys, io, pathlib, collections
 
 def FlowMap(*args, **kwargs):
     m = yaml.comments.CommentedMap(*args, **kwargs)
@@ -67,8 +67,8 @@ class GUI_Config(yaml.YAML):
         self.default_flow_style = False
         self.block_seq_indent = 2
         # self.indent = 4
-        self.allow_unicode = True
         self.encoding = 'utf-8'
+        self.allow_unicode = True
         self.width = 80
         
         self.loader = yaml.RoundTripLoader
@@ -88,7 +88,7 @@ class GUI_Config(yaml.YAML):
                             'reactor': 'Incident Shock Reactor',
                             'solve energy': True,
                             'frozen composition': False,
-                            'simulation end time': {'value': 12.0, 'units': 'us'},
+                            'simulation end time': {'value': 12.0, 'units': 'μs'},
                             'ODE solver': 'BDF',
                             'simulation interpolation factor': 1,
                             'ODE tolerance': {'relative': 1E-6, 'absolute': 1E-8},
@@ -101,8 +101,8 @@ class GUI_Config(yaml.YAML):
                             'enabled':                  {'global': True,     'local': True},
                             'algorithm':                {'global': 'DIRECT', 'local': 'Subplex'},
                             'initial step':             {'global': 1.0E-2,   'local': 1.0E-2},
-                            'relative tolerance x':     {'global': 1.0E-4,   'local': 1.0E-4},
-                            'relative tolerance fcn':   {'global': 5.0E-4,   'local': 1.0E-3},
+                            'relative x tolerance':     {'global': 1.0E-4,   'local': 1.0E-4},
+                            'relative fcn tolerance':   {'global': 5.0E-4,   'local': 1.0E-3},
                             'weight function': {
                                 'max': 100,
                                 'min': [0, 0],
@@ -155,14 +155,14 @@ class GUI_Config(yaml.YAML):
         if dest is None: 
             self.dump(out, sys.stdout)
         else:
-            with open(dest, 'w') as configFile:
+            with io.open(dest, 'w', encoding='utf-8') as configFile:
                 self.dump(out, configFile)
 
     def from_yaml(self, src=None):
         if src is None: return
         if not src.exists(): return
         
-        with open(src, 'r') as configFile:
+        with io.open(src, 'r', encoding='utf-8') as configFile:
             data = deep_convert_dict(self.load(configFile))
 
         self.settings.update(data)
@@ -178,22 +178,108 @@ class GUI_settings:
         parent = self.parent
         
         self.cfg_io.from_yaml(parent.path['default_config'])
+        settings = {'directory': self.cfg['Directory Settings'],
+                    'exp': self.cfg['Experiment Settings'],
+                    'reactor': self.cfg['Reactor Settings'],
+                    'opt': self.cfg['Optimization Settings'],
+                    'plot': self.cfg['Plot Settings'],
+                   }
+        
+        ## Set Experiment Settings ##
+        # Set Temperature Units
+        parent.T1_units_box.setCurrentText(f"[{settings['exp']['temperature units']['zone 1']}]")
+        parent.T2_units_box.setCurrentText(f"[{settings['exp']['temperature units']['zone 2']}]")
+        parent.T5_units_box.setCurrentText(f"[{settings['exp']['temperature units']['zone 5']}]")
+        
+        # Set Pressure Units
+        parent.P1_units_box.setCurrentText(f"[{settings['exp']['pressure units']['zone 1']}]")
+        parent.P2_units_box.setCurrentText(f"[{settings['exp']['pressure units']['zone 2']}]")
+        parent.P5_units_box.setCurrentText(f"[{settings['exp']['pressure units']['zone 5']}]")
+        
+        # Set Incident Velocity Units
+        parent.u1_units_box.setCurrentText(f"[{settings['exp']['velocity units']}]")
+        
+        
+        ## Set Reactor Settings ##
+        parent.reactor_select_box.setCurrentText(settings['reactor']['reactor'])
+        parent.solve_energy_box.setChecked(settings['reactor']['solve energy'])
+        parent.frozen_comp_box.setChecked(settings['reactor']['frozen composition'])
+        parent.end_time_value_box.setValue(settings['reactor']['simulation end time']['value'])
+        parent.end_time_units_box.setCurrentText(f"[{settings['reactor']['simulation end time']['units']}]")
+        parent.ODE_solver_box.setCurrentText(settings['reactor']['ODE solver'])
+        parent.sim_interp_factor_box.setValue(settings['reactor']['simulation interpolation factor'])
+        # parent.ODE_rtol_box.setValue(settings['reactor']['ODE tolerance']['relative'])    # TODO: Temporarily disabled until box is changed
+        # parent.ODE_atol_box.setValue(settings['reactor']['ODE tolerance']['absolute'])    # TODO: Temporarily disabled until box is changed
+
+        ## Set Optimization Settings ##
+        parent.time_unc_box.setValue(settings['opt']['time uncertainty'])
+        parent.loss_alpha_box.setValue(settings['opt']['loss function alpha'])
+        parent.loss_c_box.setValue(settings['opt']['loss function c'])
+        parent.multiprocessing_box.setChecked(settings['opt']['multiprocessing'])
+        
+        # Update Global and Local Settings
+        for opt_type in ['global', 'local']:
+            if opt_type == 'global':
+                parent.global_opt_enable_box.setChecked(settings['opt']['enabled'][opt_type])
+                parent.global_opt_choice_box.setCurrentText(settings['opt']['algorithm'][opt_type])
+            else:
+                parent.local_opt_enable_box.setChecked(settings['opt']['enabled'][opt_type])
+                parent.local_opt_choice_box.setCurrentText(settings['opt']['algorithm'][opt_type])
+                
+            widget = parent.optimization_settings.widgets[opt_type]
+            widget['initial_step'].setValue(settings['opt']['initial step'][opt_type])
+            widget['xtol_rel'].setValue(settings['opt']['relative x tolerance'][opt_type])
+            widget['ftol_rel'].setValue(settings['opt']['relative fcn tolerance'][opt_type])
+        
+        # Update weight function
+        shock = parent.display_shock
+        shock['weight_max'] = [settings['opt']['weight function']['max']]
+        shock['weight_min'] = settings['opt']['weight function']['min']
+        shock['weight_shift'] = settings['opt']['weight function']['time location']
+        shock['weight_k'] = settings['opt']['weight function']['inverse growth rate']
+
+        parent.weight.set_boxes()
+        
+        ## Set Plot Settings ##
+        parent.plot.signal._set_scale('x', settings['plot']['x-scale'], parent.plot.signal.ax[1], True)
+        parent.plot.signal._set_scale('y', settings['plot']['y-scale'], parent.plot.signal.ax[1], True)
+        
+        '''
+          time uncertainty: 0.0
+          loss function alpha: -2.0
+          loss function c: 1.0
+          multiprocessing: true
+          enabled:
+            global: true
+            local: true
+          algorithm:
+            global: DIRECT
+            local: Subplex
+          initial step:
+            global: 0.01
+            local: 0.01
+          relative tolerance x:
+            global: 1.0e-04
+            local: 1.0e-04
+          relative tolerance fcn:
+            global: 5.0e-04
+            local: 1.0e-03
+          weight function:
+            max: 100
+            min: [0, 0]
+            time location: [0.5, 3.7]
+            inverse growth rate: [0, 0.3]
+        '''
         
         parent.shock_choice_box.setValue(1)
-        # parent.time_offset_box.setValue(float(self.config['Experiment Settings']['time_offset']))
-        # parent.time_unc_box.setValue(float(self.config['Experiment Settings']['time_unc']))
-        # parent.start_ind_box.setValue(float(self.config['Experiment Settings']['start_ind']))
-        # parent.weight_k_box.setValue(float(self.config['Experiment Settings']['weight_k']))
-        # parent.weight_shift_box.setValue(float(self.config['Experiment Settings']['weight_shift']))
-        # parent.weight_min_box.setValue(float(self.config['Experiment Settings']['weight_min'])*100)
-        
-        # parent.path['path_file'] = pathlib.Path(cfg['Directory Settings']['directory file'])
-        parent.path_file_box.setPlainText(str(self.cfg['Directory Settings']['directory file']))
+        parent.path_file_box.setPlainText(str(settings['directory']['directory file']))
     
     def save(self, save_all=False):
         parent = self.parent
         
         self.cfg['Directory Settings']['directory file'] = str(parent.path['path_file'])
+        
+        # self.cfg['Experiment Settings']['temperature units']['zone 1'] = str(parent.path['path_file'])
         
         '''
         if save_all:

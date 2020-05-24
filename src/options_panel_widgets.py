@@ -732,10 +732,10 @@ class Weight_Parameters_Table(QtCore.QObject):
             update_plot = True
         
         shock['weight_max'] = [self.boxes['weight_max'][0].value()]
-        shock['weight_k'] = [box.value() for box in self.boxes['weight_k']]
-        shock['weight_shift'] = [box.value() for box in self.boxes['weight_shift']]
         shock['weight_min'] = [box.value() for box in self.boxes['weight_min']]
-        
+        shock['weight_shift'] = [box.value() for box in self.boxes['weight_shift']]
+        shock['weight_k'] = [box.value() for box in self.boxes['weight_k']]
+
         if parent.display_shock['exp_data'].size > 0 and update_plot: # If exp_data exists
             parent.plot.signal.update(update_lim=False)
             parent.plot.signal.canvas.draw()

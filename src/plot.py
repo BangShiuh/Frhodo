@@ -28,6 +28,47 @@ from qtpy import QtCore, QtGui
 
 import plot_widget
 
+#The following constant was computed in maxima 5.35.1 using 64 bigfloat digits of precision
+__logBase10of2 = 3.010299956639811952137388947244930267681898814621085413104274611e-1
+
+import numpy as np
+
+def RoundToSigFigs(x, sigfigs):
+    """
+    https://stackoverflow.com/questions/18915378/rounding-to-significant-figures-in-numpy
+    
+    Rounds the value(s) in x to the number of significant figures in sigfigs.
+    Return value has the same type as x.
+
+    Restrictions:
+    sigfigs must be an integer type and store a positive value.
+    x must be a real value.
+    """
+    if not ( type(sigfigs) is int or type(sigfigs) is long or
+             isinstance(sigfigs, np.integer) ):
+        raise TypeError( "RoundToSigFigs: sigfigs must be an integer." )
+
+    if sigfigs <= 0:
+        raise ValueError( "RoundToSigFigs: sigfigs must be positive." )
+
+    if not np.isreal( x ):
+        raise TypeError( "RoundToSigFigs: x must be real." )
+
+    xsgn = np.sign(x)
+    absx = xsgn * x
+    mantissa, binaryExponent = np.frexp( absx )
+
+    decimalExponent = __logBase10of2 * binaryExponent
+    omag = np.floor(decimalExponent)
+
+    mantissa *= 10.0**(decimalExponent - omag)
+
+    if mantissa < 1.0:
+        mantissa *= 10.0
+        omag -= 1.0
+
+    return xsgn * np.around( mantissa, decimals=sigfigs - 1 ) * 10.0**omag
+
 colormap = colors.colormap(reorder_from=1, num_shift=4)
 class All_Plots:    # container to hold all plots
     def __init__(self, main):
@@ -173,10 +214,16 @@ class Base_Plot(QtCore.QObject):
             return
         
         for (axis, lim) in zip(['x', 'y'], [xlim, ylim]):
+            # Set Limits
             if len(lim) == 0:
                 eval('self.set_' + axis + 'lim(axes, data["' + axis + '"])')
             else:
                 eval('axes.set_' + axis + 'lim(lim)')
+            
+            # If bisymlog, also update scaling, C
+            if eval('axes.get_' + axis + 'scale()') == 'bisymlog':
+                self._set_scale(axis, 'bisymlog', axes)
+                
         self._draw_event()  # force a draw
     
     def _get_data(self, axes):      # NOT Generic
@@ -247,23 +294,28 @@ class Base_Plot(QtCore.QObject):
         elif type == 'abslog':
             str = 'axes.set_{:s}scale("{:s}")'.format(coord, 'abslog')
         elif type == 'bisymlog':
-            data = self._get_data(axes)[coord]
-            min_data = np.array(data)[np.isfinite(data)].min()  # ignore nan and inf
-            max_data = np.array(data)[np.isfinite(data)].max()
+            # default string to evaluate 
+            str = 'axes.set_{0:s}scale("{1:s}")'.format(coord, 'bisymlog')
             
-            if len(data) == 0 or min_data == max_data:  # backup in case set on blank plot
-                str = 'axes.set_{0:s}scale("{1:s}")'.format(coord, 'bisymlog')
-            else:
-                # if zero is within total range, find largest pos or neg range
-                if np.sign(max_data) != np.sign(min_data):  
-                    pos_range = np.max(data[data>=0])-np.min(data[data>=0])
-                    neg_range = np.max(-data[data<=0])-np.min(-data[data<=0])
-                    C = np.max([pos_range, neg_range])
-                else:
-                    C = np.abs(max_data-min_data)
-                C /= 5E2                             # scaling factor, debating between 100, 500 and 1000
+            data = self._get_data(axes)[coord]
+            if len(data) != 0:
+                finite_data = np.array(data)[np.isfinite(data)] # ignore nan and inf
+                min_data = finite_data.min()  
+                max_data = finite_data.max()
                 
-                str = 'axes.set_{0:s}scale("{1:s}", C={2:e})'.format(coord, 'bisymlog', C)
+                if min_data != max_data:
+                    # if zero is within total range, find largest pos or neg range
+                    if np.sign(max_data) != np.sign(min_data):  
+                        pos_data = finite_data[finite_data>=0]
+                        pos_range = pos_data.max() - pos_data.min()
+                        neg_data = finite_data[finite_data<=0]
+                        neg_range = neg_data.max() - neg_data.min()
+                        C = np.max([pos_range, neg_range])
+                    else:
+                        C = np.abs(max_data-min_data)
+                    C /= 1E3                  # scaling factor TODO: debating between 100, 500 and 1000
+                    C = RoundToSigFigs(C, 1)  # round to 1 significant figure
+                    str = 'axes.set_{0:s}scale("{1:s}", C={2:e})'.format(coord, 'bisymlog', C)
         
         eval(str)
         if type == 'linear':

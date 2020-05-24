@@ -1618,6 +1618,19 @@ p, li { white-space: pre-wrap; }
                     </property>
                    </widget>
                   </item>
+                  <item row="0" column="1">
+                   <spacer name="horizontalSpacer_18">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>40</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
                   <item row="0" column="2">
                    <widget class="QSpinBox" name="ODE_rtol_box">
                     <property name="minimumSize">
@@ -1648,19 +1661,6 @@ p, li { white-space: pre-wrap; }
                      <number>-6</number>
                     </property>
                    </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <spacer name="horizontalSpacer_18">
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>40</width>
-                      <height>20</height>
-                     </size>
-                    </property>
-                   </spacer>
                   </item>
                  </layout>
                 </widget>
@@ -2403,7 +2403,7 @@ p, li { white-space: pre-wrap; }
                    </sizepolicy>
                   </property>
                   <property name="text">
-                   <string>Relative Tolerance: SSE</string>
+                   <string>Relative Tolerance: loss fcn</string>
                   </property>
                  </widget>
                 </item>
@@ -2453,8 +2453,8 @@ p, li { white-space: pre-wrap; }
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>165</width>
-                 <height>104</height>
+                 <width>283</width>
+                 <height>118</height>
                 </rect>
                </property>
                <attribute name="label">
@@ -2491,7 +2491,7 @@ p, li { white-space: pre-wrap; }
                 <item row="3" column="0">
                  <widget class="QLabel" name="local_text_3">
                   <property name="text">
-                   <string>Relative Tolerance: SSE</string>
+                   <string>Relative Tolerance: loss fcn</string>
                   </property>
                  </widget>
                 </item>

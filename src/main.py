@@ -32,11 +32,14 @@ path = {'main': pathlib.Path(sys.argv[0]).parents[0].resolve()}
 
 # set appdata folder
 if platform.system() == 'Windows': # running on Windows OS
-    path['appdata'] = pathlib.Path(os.getenv('LOCALAPPDATA')).resolve()/'Frhodo'
+    path['appdata'] = pathlib.Path.home() / 'AppData/Local/Frhodo'
+    # path['appdata'] = pathlib.Path(os.getenv('LOCALAPPDATA')).resolve()/'Frhodo'
 elif platform.system() == 'Darwin': # running on Mac OS
-    path['appdata'] = pathlib.Path('~/Library/Application Support/Frhodo')
+    path['appdata'] = pathlib.Path.home() / 'Library/Application Support/Frhodo'
+    # path['appdata'] = pathlib.Path('~/Library/Application Support/Frhodo')
 elif platform.system() == 'Linux': # running on Linux OS
-    path['appdata'] = pathlib.Path('~/.config/Frhodo')
+    path['appdata'] = pathlib.Path.home() / '.local/share/Frhodo'
+    # path['appdata'] = pathlib.Path('~/.config/Frhodo')
 else:
     raise OSError('Unknown Operating System')
 
