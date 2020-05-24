@@ -28,46 +28,6 @@ from qtpy import QtCore, QtGui
 
 import plot_widget
 
-#The following constant was computed in maxima 5.35.1 using 64 bigfloat digits of precision
-__logBase10of2 = 3.010299956639811952137388947244930267681898814621085413104274611e-1
-
-import numpy as np
-
-def RoundToSigFigs(x, sigfigs):
-    """
-    https://stackoverflow.com/questions/18915378/rounding-to-significant-figures-in-numpy
-    
-    Rounds the value(s) in x to the number of significant figures in sigfigs.
-    Return value has the same type as x.
-
-    Restrictions:
-    sigfigs must be an integer type and store a positive value.
-    x must be a real value.
-    """
-    if not ( type(sigfigs) is int or type(sigfigs) is long or
-             isinstance(sigfigs, np.integer) ):
-        raise TypeError( "RoundToSigFigs: sigfigs must be an integer." )
-
-    if sigfigs <= 0:
-        raise ValueError( "RoundToSigFigs: sigfigs must be positive." )
-
-    if not np.isreal( x ):
-        raise TypeError( "RoundToSigFigs: x must be real." )
-
-    xsgn = np.sign(x)
-    absx = xsgn * x
-    mantissa, binaryExponent = np.frexp( absx )
-
-    decimalExponent = __logBase10of2 * binaryExponent
-    omag = np.floor(decimalExponent)
-
-    mantissa *= 10.0**(decimalExponent - omag)
-
-    if mantissa < 1.0:
-        mantissa *= 10.0
-        omag -= 1.0
-
-    return xsgn * np.around( mantissa, decimals=sigfigs - 1 ) * 10.0**omag
 
 colormap = colors.colormap(reorder_from=1, num_shift=4)
 class All_Plots:    # container to hold all plots
@@ -223,7 +183,18 @@ class Base_Plot(QtCore.QObject):
             # If bisymlog, also update scaling, C
             if eval('axes.get_' + axis + 'scale()') == 'bisymlog':
                 self._set_scale(axis, 'bisymlog', axes)
-                
+            
+            ''' # TODO: Do this some day, probably need to create 
+                        annotation during canvas creation
+            # Move exponent 
+            exp_loc = {'x': (.89, .01), 'y': (.01, .96)}
+            eval(f'axes.get_{axis}axis().get_offset_text().set_visible(False)')
+            ax_max = eval(f'max(axes.get_{axis}ticks())')
+            oom = np.floor(np.log10(ax_max)).astype(int)
+            axes.annotate(fr'$\times10^{oom}$', xy=exp_loc[axis], 
+                          xycoords='axes fraction')
+            '''
+        
         self._draw_event()  # force a draw
     
     def _get_data(self, axes):      # NOT Generic
@@ -270,6 +241,12 @@ class Base_Plot(QtCore.QObject):
         return data
     
     def _set_scale(self, coord, type, event, update_xylim=False):
+        def RoundToSigFigs(x, p):
+            x = np.asarray(x)
+            x_positive = np.where(np.isfinite(x) & (x != 0), np.abs(x), 10**(p-1))
+            mags = 10 ** (p - 1 - np.floor(np.log10(x_positive)))
+            return np.round(x * mags) / mags
+    
         # find correct axes
         axes = self._find_calling_axes(event)
         # for axes in self.ax:
@@ -318,11 +295,15 @@ class Base_Plot(QtCore.QObject):
                     str = 'axes.set_{0:s}scale("{1:s}", C={2:e})'.format(coord, 'bisymlog', C)
         
         eval(str)
-        if type == 'linear':
-            # axes.yaxis.set_major_formatter(OoMFormatter(4, "%1.3f"))
+        if type == 'linear' and coord == 'x':
+            formatter = MathTextSciSIFormatter(useOffset=False, useMathText=True)
+            axes.xaxis.set_major_formatter(formatter)
+            
+        elif type == 'linear' and coord == 'y':
             formatter = mpl.ticker.ScalarFormatter(useOffset=False, useMathText=True)
             formatter.set_powerlimits([-3, 4])
             axes.yaxis.set_major_formatter(formatter)
+            
         if update_xylim:
             self.update_xylim(axes)
  
@@ -1287,6 +1268,49 @@ class CustomNavigationToolbar(NavigationToolbar):
         (None, None, None, None),
         ('Save', 'Save the figure', 'filesave', 'save_figure'))
     
+
+class MathTextSciSIFormatter(mpl.ticker.ScalarFormatter): # format to SI OoM
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_powerlimits([0, 3])
+    
+    def _set_order_of_magnitude(self):  # modified from matplotlib
+        # if scientific notation is to be used, find the appropriate exponent
+        # if using an numerical offset, find the exponent after applying the
+        # offset. When lower power limit = upper <> 0, use provided exponent.
+        if not self._scientific:
+            self.orderOfMagnitude = 0
+            return
+        if self._powerlimits[0] == self._powerlimits[1] != 0:
+            # fixed scaling when lower power limit = upper <> 0.
+            self.orderOfMagnitude = self._powerlimits[0]
+            return
+        # restrict to visible ticks
+        vmin, vmax = sorted(self.axis.get_view_interval())
+        locs = np.asarray(self.locs)
+        locs = locs[(vmin <= locs) & (locs <= vmax)]
+        locs = np.abs(locs)
+        if not len(locs):
+            self.orderOfMagnitude = 0
+            return
+        if self.offset:
+            oom = np.floor(np.log10(vmax - vmin))
+        else:
+            if locs[0] > locs[-1]:
+                val = locs[0]
+            else:
+                val = locs[-1]
+            if val == 0:
+                oom = 0
+            else:
+                oom = np.floor(np.log10(val))
+        if oom <= self._powerlimits[0]: # round down oom to nearest 3 to match SI
+            self.orderOfMagnitude = np.floor(oom/3)*3
+        elif oom >= self._powerlimits[1]:
+            self.orderOfMagnitude = np.floor(oom/3)*3
+        else:
+            self.orderOfMagnitude = 0
+            
     
 class AbsoluteLogScale(mplscale.LogScale):
     name = 'abslog'
@@ -1501,7 +1525,12 @@ class BiSymmetricLogScale(mplscale.ScaleBase):
             self.C = C
 
         def transform_non_affine(self, a):
-            return np.sign(a)*np.log10(1 + np.abs(a/self.C))/np.log10(self.base)
+            fcn = lambda x: np.sign(x)*np.log10(1 + np.abs(x/self.C))/np.log10(self.base)
+            
+            n = np.isfinite(a)   # only perform transformation on finite values
+            res = a.copy()
+            res[n] = fcn(res[n])
+            return res
 
         def inverted(self): # link to inverted transform class
             return BiSymmetricLogScale.InvertedBiSymLogTransform(self.C)
