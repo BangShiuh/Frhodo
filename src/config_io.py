@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# This file is part of Frhodo. Copyright © 2020, UChicago Argonne, LLC
+# and licensed under BSD-3-Clause. See License.txt in the top-level 
+# directory for license and copyright information.
+
 try:
     import ruamel_yaml as yaml
 except ImportError:
