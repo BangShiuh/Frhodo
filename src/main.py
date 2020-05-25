@@ -14,7 +14,7 @@ from qtpy import uic, QtCore, QtGui
 import numpy as np
 # from timeit import default_timer as timer
 
-import plot, options_panel_widgets, convert_units, sim_explorer_widget
+import appdirs, plot, options_panel_widgets, convert_units, sim_explorer_widget
 import mech_fcns, settings, config_io, save_widget, error_window
     
 if os.environ['QT_API'] == 'pyside2': # Silence warning: "Qt WebEngine seems to be initialized from a plugin."
@@ -29,21 +29,10 @@ if hasattr(QtCore.Qt, 'AA_UseHighDpiPixmaps'):
 # set main folder
 path = {'main': pathlib.Path(sys.argv[0]).parents[0].resolve()}
 
-# set appdata folder
-if platform.system() == 'Windows': # running on Windows OS
-    path['appdata'] = pathlib.Path.home() / 'AppData/Local/Frhodo'
-    # path['appdata'] = pathlib.Path(os.getenv('LOCALAPPDATA')).resolve()/'Frhodo'
-elif platform.system() == 'Darwin': # running on Mac OS
-    path['appdata'] = pathlib.Path.home() / 'Library/Application Support/Frhodo'
-    # path['appdata'] = pathlib.Path('~/Library/Application Support/Frhodo')
-elif platform.system() == 'Linux': # running on Linux OS
-    path['appdata'] = pathlib.Path.home() / '.local/share/Frhodo'
-    # path['appdata'] = pathlib.Path('~/.config/Frhodo')
-else:
-    raise OSError('Unknown Operating System')
-
-# Make path if it doesn't exist
-path['appdata'].mkdir(parents=True, exist_ok=True)
+# set appdata folder using AppDirs library (but just using the source code file)
+dirs = appdirs.AppDirs(appname='Frhodo', roaming=True, appauthor=False)
+path['appdata'] = pathlib.Path(dirs.user_config_dir)
+path['appdata'].mkdir(parents=True, exist_ok=True) # Make path if it doesn't exist
 
 
 class Main(QMainWindow):

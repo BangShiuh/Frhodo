@@ -95,8 +95,6 @@ Loading:
 ****  abstract file loading system
 ***   remove requirement for Sample Rate in exp file
 ***   remove requirements for raw signal files
-***   set widgets to save their state to default_settings
-**    load previous shock settings/plot
 
 Rate of Production Analysis Plot:
 ***** Create widgets
@@ -109,4 +107,3 @@ Misc:
 ***   boundary layer effects in shock solver
 ***   add table of kinetic values etc with preset and movable column/row order
 **    SI units or CGS units output option
-*     stand alone executable
