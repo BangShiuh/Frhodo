@@ -14,7 +14,8 @@ from qtpy import uic, QtCore, QtGui
 import numpy as np
 # from timeit import default_timer as timer
 
-import appdirs, plot, options_panel_widgets, convert_units, sim_explorer_widget
+from plot.plot_main import All_Plots as plot
+import appdirs, options_panel_widgets, convert_units, sim_explorer_widget
 import mech_fcns, settings, config_io, save_widget, error_window
     
 if os.environ['QT_API'] == 'pyside2': # Silence warning: "Qt WebEngine seems to be initialized from a plugin."
@@ -61,7 +62,7 @@ class Main(QMainWindow):
         self.series = settings.series(self)
         
         self.sim_explorer = sim_explorer_widget.SIM_Explorer_Widgets(self)
-        self.plot = plot.All_Plots(self)
+        self.plot = plot(self)
         options_panel_widgets.Initialize(self)
         self.mech = mech_fcns.Chemical_Mechanism()
         
@@ -260,12 +261,13 @@ class Main(QMainWindow):
     # def raise_error(self):
         # assert False
 
-sys.excepthook = error_window.excepthookDecorator(path)
             
 if __name__ == '__main__':
     if platform.system() == 'Windows':  # this is required for pyinstaller on windows
         multiprocessing.freeze_support()
 
+    sys.excepthook = error_window.excepthookDecorator(path)
+    
     app = QApplication(sys.argv)
     main = Main(path)
     sys.exit(app.exec_())
