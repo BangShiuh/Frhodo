@@ -10,6 +10,7 @@ from copy import deepcopy
 from optimize.optimize_worker import Worker
 from optimize.fit_fcn import initialize_parallel_worker, update_mech_coef_opt
 
+
 class Multithread_Optimize:
     def __init__(self, parent):
         self.parent = parent

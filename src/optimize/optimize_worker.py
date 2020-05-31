@@ -15,6 +15,7 @@ from timeit import default_timer as timer
 import mech_widget
 from optimize.fit_fcn import initialize_parallel_worker, Fit_Fun
 
+
 class Worker(QRunnable):
     '''
     Worker thread

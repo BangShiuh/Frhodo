@@ -4,6 +4,7 @@
         
 from plot import raw_signal_plot, signal_plot, sim_explorer_plot, optimization_plot, plot_widget
 
+
 class All_Plots:    # container to hold all plots
     def __init__(self, parent):
         self.raw_sig = raw_signal_plot.Plot(parent, parent.raw_signal_plot_widget, parent.mpl_raw_signal)

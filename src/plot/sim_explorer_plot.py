@@ -8,6 +8,7 @@ import numpy as np
 from plot.base_plot import Base_Plot
 from plot.draggable import DraggableLegend
 
+
 class Plot(Base_Plot):
     def __init__(self, parent, widget, mpl_layout):
         super().__init__(parent, widget, mpl_layout)

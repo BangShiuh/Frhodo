@@ -4,11 +4,11 @@
 
 import os, io, stat, contextlib
 import cantera as ct
-from cantera import interrupts, ck2yaml, cti2yaml#, ctml2yaml
+from cantera import interrupts, cti2yaml#, ck2yaml, ctml2yaml
 import numpy as np
 # import scipy.integrate
 # import scipy.optimize
-import integrate, shock_fcns
+import integrate, shock_fcns, ck2yaml
 
 class Simulation_Result:
     def __init__(self, var_val_pairs=[]):

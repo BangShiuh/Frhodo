@@ -71,7 +71,7 @@ def get_notes(path=None):
                 note['reaction'].append('! ' + rxn['note'].replace('\n', '\n! '))
             else:
                 note['reaction'].append('')
-    print(note)
+       
     return note
     
 

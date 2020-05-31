@@ -102,6 +102,7 @@ Rate of Production Analysis Plot:
 ****  Networkx?
 
 Misc:
+****  preferences menu/global settings for things like generated mech directory
 ***   bug: ctrl+c not working on scientific spinboxes, probably related to hover shortcuts not working
 ***   change spinboxes to scientific spinboxes
 ***   boundary layer effects in shock solver

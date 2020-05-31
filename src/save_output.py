@@ -69,12 +69,10 @@ class Save:
         return table
     
     def write_table(self, path, table, line_start = 0): # Notepad has a maximum line length of 1024 characters
-        f = open(path, 'w')
-        for i, line in enumerate(table):
-            if i >= line_start:
-                f.write(line + '\n')  
-        f.write('\n')
-        f.close()
+        with open(path, 'w') as f:
+            for i, line in enumerate(table):
+                if i >= line_start:
+                    f.write(line + '\n')  
     
     def all(self, SIM, save_var, units = 'CGS'):
         def find_nearest(array, value):
@@ -205,8 +203,7 @@ class Save:
         table = self.make_table(name[0], labels, data, sig_fig = 3)
         self.write_table(self.path['Kinetic Time Histories.txt'], table, line_start = 0)
    
-    def sim_log_txt(self, save_var):
-        f = open(self.path['Sim log'], 'a')   # open log in append mode
+    def sim_log_txt(self, save_var): 
         name = self.path['Mech.ck'].parents[0].name
         if 'Sim' in name:    # Check for Sim in string (this should work beyond Sim 1)
             Sim_num = name
@@ -222,8 +219,9 @@ class Save:
                 comment = comment + '\n' + addComment
         
         comment = '\n\t'.join(comment.split('\n'))    # split and replace with tabs for formatting
-        f.write(Sim_num + ':\t' + comment + '\n')
-        f.close()
+        
+        with open(self.path['Sim log'], 'a') as f: # open log in append mode
+            f.write(Sim_num + ':\t' + comment + '\n')
         
     def chemkin_format(self, gas=[], path=[]):
         if not gas:
@@ -231,4 +229,4 @@ class Save:
         if not path:
             path = self.path['Mech.ck']
         
-        soln2ck.write(gas, output_filename=path.name, path=path.parent)
+        soln2ck.write(gas, self.path['Mech.ck'], self.path['Cantera_Mech'])
