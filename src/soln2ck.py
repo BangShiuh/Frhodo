@@ -18,6 +18,7 @@ TF Lu and CK Law. Combustion and Flame, 154:153--163, 2008. doi:10.1016/j.combus
 
 import os, pathlib
 from textwrap import fill
+from collections import Counter
 
 import cantera as ct
 
@@ -32,15 +33,81 @@ CALORIES_CONSTANT = 4184.0
 # Conversion from 1 debye to coulomb-meters
 DEBEYE_CONVERSION = 3.33564e-30
 
-def get_notes(path=None):
+def reorder_reaction_equation(solution, reaction):
+    # Split Reaction Equation
+    rxn_eqn = reaction.equation
+    for reaction_direction in [' <=> ', ' <= ', ' => ']:
+        if reaction_direction in rxn_eqn:
+            break
+    for third_body in [' (+M)', ' + M', '']: # search eqn for third body
+        if third_body in rxn_eqn:            # if reaches '', doesn't exist
+            break
+
+    # Sort and apply to reaction equation
+    reaction_txt = []
+    reaction_split = {'reactants': reaction.reactants, 
+                      'products': reaction.products}
+    for n, (reaction_side, species) in enumerate(reaction_split.items()):
+        species_weights = []
+        for key in species.keys():
+            index = solution.species_index(key)
+            species_weights.append(solution.molecular_weights[index])
+        
+        # Append coefficient to species
+        species_list = []
+        for species_text, coef in species.items():
+            if coef == 1.0:
+                species_list.append(species_text)
+            else:
+                species_list.append(f'{coef:.0f} {species_text}')
+                
+        species = species_list
+        
+        # Reorder species based on molecular weights
+        species = [x for y, x in sorted(zip(species_weights, species))][::-1]
+        reaction_txt.append(' + '.join(species) + third_body)
+    
+    reaction_txt = reaction_direction.join(reaction_txt)
+    
+    return reaction_txt
+
+
+def match_reaction(solution, yaml_rxn):
+    yaml_rxn = {'eqn': yaml_rxn}
+    
+    for reaction_direction in [' <=> ', ' <= ', ' => ']:
+        if reaction_direction in yaml_rxn['eqn']:
+            break
+    for third_body in [' (+M)', ' + M', '']: # search eqn for third body
+        if third_body in yaml_rxn['eqn']:    # if reaches '', doesn't exist
+            break
+    
+    yaml_rxn_split = yaml_rxn['eqn'].split(reaction_direction)   
+    for i, side in zip([0, 1], ['reac', 'prod']):
+        yaml_rxn[side] = {}
+        species = yaml_rxn_split[i].replace(third_body, '').split(' + ')
+        yaml_rxn[side].update(Counter(species))
+    
+    for rxn in solution.reactions():
+        if (rxn.reactants == yaml_rxn['reac'] and    
+            rxn.products == yaml_rxn['prod'] and 
+            third_body in str(rxn)):
+                
+            return str(rxn) # return rxn if match
+    
+    return yaml_rxn['eqn']  # returns yaml_str if no match
+
+
+def get_notes(path=None, solution=None):
     """Get notes by parsing input mechanism in yaml format
     Parameters
     ----------
     path : path or str, optional
         Path of yaml file used as input in order to parse for notes
+    solution : 
     """
     
-    note = {'header': [], 'species_thermo': {}, 'species': {}, 'reaction': []}
+    note = {'header': [], 'species_thermo': {}, 'species': {}, 'reaction': {}}
     
     if path is None: return note
     
@@ -67,11 +134,12 @@ def get_notes(path=None):
     
     if 'reactions' in data:
         for rxn in data['reactions']:
+            ct_rxn_eqn = match_reaction(solution, rxn['equation'])
             if 'note' in rxn:
-                note['reaction'].append('! ' + rxn['note'].replace('\n', '\n! '))
+                note['reaction'][ct_rxn_eqn] = '! ' + rxn['note'].replace('\n', '\n! ')
             else:
-                note['reaction'].append('')
-    print(note)
+                note['reaction'][ct_rxn_eqn] = ''
+    
     return note
     
 
@@ -243,16 +311,23 @@ def thermo_data_text(species_list, note, input_type='included'):
         # total length should be 80
         
         # attempt to split note and comment
-        comment = '!\n'
         if len(note[species.name].split('\n', 1)) == 1:
+            comment = ''
+            comment_str = ''
             note_str = note[species.name]
         else:
+            comment = '!\n'
             note_str, comment_str = note[species.name].split('\n', 1)
-            comment_str = comment_str.replace('\n', '\n! ')
-            comment = f'{comment}!{comment_str}\n'
+        
+        if len(f'{species.name} {note_str}') > 24:
+            comment_str += '\n' + note_str
+            note_str = ''
+            
+        comment_str = comment_str.replace('\n', '\n! ')
+        comment = f'{comment}! {comment_str}'
         
         name_and_note = f'{species.name} {note_str}'
-        species_string = (comment +  
+        species_string = (comment + '\n' +
             f'{name_and_note:<24}' + # name and date/note field
             f'{composition_string:<20}' +
             'G' + # only supports gas phase
@@ -334,45 +409,6 @@ def write_transport_data(species_list, filename='generated_transport.dat'):
             trans_file.write(species_string)
 
 
-def reorder_reaction_equation(solution, reaction):
-    # Split Reaction Equation
-    rxn_eqn = reaction.equation
-    for reaction_direction in [' <=> ', ' <= ', ' => ']:
-        if reaction_direction in rxn_eqn:
-            break
-    for third_body in [' (+M)', ' + M', '']: # search eqn for third body
-        if third_body in rxn_eqn:            # if reaches '', doesn't exist
-            break
-
-    # Sort and apply to reaction equation
-    reaction_txt = []
-    reaction_split = {'reactants': reaction.reactants, 
-                      'products': reaction.products}
-    for n, (reaction_side, species) in enumerate(reaction_split.items()):
-        species_weights = []
-        for key in species.keys():
-            index = solution.species_index(key)
-            species_weights.append(solution.molecular_weights[index])
-        
-        # Append coefficient to species
-        species_list = []
-        for species_text, coef in species.items():
-            if coef == 1.0:
-                species_list.append(species_text)
-            else:
-                species_list.append(f'{coef:.0f} {species_text}')
-                
-        species = species_list
-        
-        # Reorder species based on molecular weights
-        species = [x for y, x in sorted(zip(species_weights, species))][::-1]
-        reaction_txt.append(' + '.join(species) + third_body)
-    
-    reaction_txt = reaction_direction.join(reaction_txt)
-    
-    return reaction_txt
-
-
 def write(solution, output_path='', input_yaml='',
           skip_thermo=False, same_file_thermo=True, 
           skip_transport=False):
@@ -419,13 +455,14 @@ def write(solution, output_path='', input_yaml='',
         if not isinstance(input_yaml, pathlib.PurePath):
             input_yaml = pathlib.Path(input_yaml)
             
-        note = get_notes(input_yaml)
+        note = get_notes(input_yaml, solution)
     else:    
         note = get_notes()
     
     with open(output_path, 'w') as mech_file:
         # Write title block to file
         if note['header']:
+            note["header"] = note['header'].replace('\n', '\n! ')
             mech_file.write(f'! {note["header"]}\n! \n')
         mech_file.write('! Chemkin file converted from Cantera solution object\n! \n\n')
 
@@ -450,14 +487,19 @@ def write(solution, output_path='', input_yaml='',
         mech_file.write('REACTIONS  CAL/MOLE  MOLES\n')
         # Write data for each reaction in the Solution Object
         for n, reaction in enumerate(solution.reactions()):
-            note['reaction'][n] = note['reaction'][n].rsplit('\n! ', 1)
-            if len(note['reaction'][n]) > 1:
-                reaction_string = f'{note["reaction"][n][0]}\n'
-                after_eqn_text = note['reaction'][n][-1].strip()
-                note['reaction'][n][-1] = f'! {after_eqn_text}'
+            reaction_equation = str(reaction)
+            
+            reaction_string = ''
+            if reaction_equation in note['reaction']:
+                rxn_note = note['reaction'][reaction_equation]
+                rxn_note = rxn_note.rsplit('\n! ', 1)
+                if len(rxn_note) > 1:
+                    reaction_string = f'{rxn_note[0]}\n'
+                    after_eqn_text = rxn_note[-1].strip()
+                    rxn_note[-1] = f'! {after_eqn_text}'
             else:
-                reaction_string = ''
-        
+                rxn_note = ['']
+            
             reaction_equation = reorder_reaction_equation(solution, reaction)
             reaction_string += f'{reaction_equation:<{max_rxn_width}}'
 
@@ -500,7 +542,7 @@ def write(solution, output_path='', input_yaml='',
             else:
                 raise NotImplementedError(f'Unsupported reaction type: {type(reaction)}')
 
-            reaction_string += f'{arrhenius}    {note["reaction"][n][-1]}\n'
+            reaction_string += f'{arrhenius}    {rxn_note[-1]}\n'
             
             # now write any auxiliary information for the reaction
             if type(reaction) == ct.FalloffReaction:
