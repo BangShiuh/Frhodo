@@ -548,7 +548,7 @@ def write(solution, output_path='', input_yaml='',
             if type(reaction) == ct.FalloffReaction:
                 # for falloff reaction, need to write low-pressure limit Arrhenius expression
                 arrhenius = build_falloff_arrhenius(
-                    reaction.high_rate, 
+                    reaction.low_rate, 
                     sum(reaction.reactants.values()), 
                     ct.FalloffReaction,
                     'low'
