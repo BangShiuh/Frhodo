@@ -11,14 +11,14 @@ from copy import deepcopy
 import mech_fcns
 from optimize.fit_coeffs import fit_coeffs
 
+mpMech = {}
 
-def initialize_parallel_worker(path, coeffs, coeffs_bnds, rate_bnds):
-    global mpMech
-    mpMech = mech_fcns.Chemical_Mechanism()
-    mech_load_output = mpMech.load_mechanism(path, silent=True)
-    mpMech.coeffs = deepcopy(coeffs)
-    mpMech.coeffs_bnds = deepcopy(coeffs_bnds)
-    mpMech.rate_bnds = deepcopy(rate_bnds)
+def initialize_parallel_worker(mech_txt, coeffs, coeffs_bnds, rate_bnds):
+    mpMech['obj'] = mech = mech_fcns.Chemical_Mechanism()
+    mech.set_mechanism(mech_txt)    # load mechanism from yaml text in memory
+    mech.coeffs = deepcopy(coeffs)
+    mech.coeffs_bnds = deepcopy(coeffs_bnds)
+    mech.rate_bnds = deepcopy(rate_bnds)
 
 def outlier(res, a=2, c=1, weights=[], max_iter=25):
     def diff(res_outlier):
@@ -130,7 +130,7 @@ def calculate_residuals(args_list):
         return np.floor(np.log10(np.abs(x)))
     
     var, coef_opt, x, shock = args_list
-    mech = mpMech
+    mech = mpMech['obj']
     
     # Optimization Begins, update mechanism
     update_mech_coef_opt(mech, coef_opt, x)
@@ -247,8 +247,7 @@ class Fit_Fun:
                 append_output(output_dict, calc_resid_output)
 
         else:
-            global mpMech
-            mpMech = self.mech
+            mpMech['obj'] = self.mech
             
             for shock in self.shocks2run:
                 args_list = (var_dict, self.coef_opt, x, shock)

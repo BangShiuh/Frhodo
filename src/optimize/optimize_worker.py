@@ -113,7 +113,7 @@ class Worker(QRunnable):
         parent = self.parent
         pool = mp.Pool(processes=parent.max_processors,
                        initializer=initialize_parallel_worker,
-                       initargs=(parent.path, parent.mech.coeffs, parent.mech.coeffs_bnds, 
+                       initargs=(parent.mech.yaml_txt, parent.mech.coeffs, parent.mech.coeffs_bnds, 
                        parent.mech.rate_bnds,))
         
         self.trim_shocks()  # trim shock data from zero weighted data

@@ -229,4 +229,4 @@ class Save:
         if not path:
             path = self.path['Mech.ck']
         
-        soln2ck.write(gas, self.path['Mech.ck'], self.path['Cantera_Mech'])
+        soln2ck.write(gas, path, self.path['Cantera_Mech'])

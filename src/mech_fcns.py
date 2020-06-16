@@ -150,7 +150,8 @@ class Chemical_Mechanism:
                           
             print('Validating mechanism...', end='')    
             try:                                            # This test taken from ck2cti
-                self.gas = ct.Solution(mech_path)
+                self.yaml_txt = path['Cantera_Mech'].read_text()        # Storing full text could be bad if large
+                self.gas = ct.Solution(yaml=self.yaml_txt)
                 for surfname in surfaces:
                     phase = ct.Interface(outName, surfname, [self.gas])
                 print('PASSED.')
@@ -203,7 +204,13 @@ class Chemical_Mechanism:
                 phase_name='gas', out_name=path['Cantera_Mech'], quiet=False, permissive=True)
            
         return surfaces
-      
+    
+    def set_mechanism(self, mech_txt):
+        self.gas = ct.Solution(yaml=mech_txt)
+        
+        self.set_rate_expression_coeffs()   # set copy of coeffs
+        self.set_thermo_expression_coeffs() # set copy of thermo coeffs
+    
     def gas(self): return self.gas       
     
     def set_rate_expression_coeffs(self):
